@@ -1,7 +1,7 @@
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-fasta_sequences = SeqIO.parse(open("data/ensembl/Homo_sapiens.GRCh38.dna.primary_assembly.fa"),'fasta')
+fasta_sequences = SeqIO.parse(open("data/ensembl/Mus_musculus.GRCm38.dna.primary_assembly.fa"),'fasta')
 
 with open("data/ensembl/202122.fa","w") as out:
     for seq_record in fasta_sequences:

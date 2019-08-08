@@ -2,7 +2,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-fa = "data/ensembl/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
+fa = "data/ensembl/Mus_musculus.GRCm38.dna.primary_assembly.fa"
 
 ordered = []
 chrn = [str(x) for x in range(1, 23)]
@@ -30,6 +30,6 @@ ordered.extend(gl)
 ordered.extend(ki)
 ordered.extend(other)
 
-with open("data/ensembl/Homo_sapiens.GRCh38.dna.primary_assembly.karyotypic.fa","w") as out:
+with open("data/ensembl/Mus_musculus.GRCm38.dna.primary_assembly.karyotypic.fa","w") as out:
     for seq in ordered:
         out.write(seq.format("fasta"))

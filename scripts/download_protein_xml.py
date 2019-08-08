@@ -9,7 +9,7 @@ TOOL_ENDPOINT = '/uploadlists/'
 
 # query = 'name:"polymerase alpha" AND proteome:UP000005640 AND reviewed:yes'
 # query = 'proteome:UP000005640 AND reviewed:yes'
-query = 'proteome:UP000005640'
+query = 'proteome:UP000000589' #UP000005640
 
 payload = {
     'query': query,
