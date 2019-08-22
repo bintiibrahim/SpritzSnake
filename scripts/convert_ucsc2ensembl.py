@@ -6,11 +6,35 @@ for line in open("ChromosomeMappings/GRCm38_UCSC2ensembl.txt"):
     if len(linesplit) <= 1: continue
     ucsc2ensembl[linesplit[0]] = linesplit[1]
 
-with open("data/ensembl/Mus_musculus.ensembl.vcf","w") as ensembl:
+with open("data/ensembl/Mus_musculus.orig.ensembl.vcf","w") as ensembl:
+    chrs={}
+    max_chr=0
     for line in ucsc:
+        # header
         if line.startswith("#"):
             ensembl.write(line)
+            continue
+
+        # change chr from UCSC to Ensembl
         splitline = line.split("\t")
         if len(splitline) > 1 and splitline[0] in ucsc2ensembl:
             splitline[0] = ucsc2ensembl[splitline[0]]
-            ensembl.write("\t".join(splitline))
+        if splitline[0].isdigit() and int(splitline[0]) > max_chr:
+            max_chr = int(splitline[0])
+        lineline="\t".join(splitline)
+        if not splitline[0] in chrs:
+            chrs[splitline[0]] = [lineline]
+        else:
+            chrs[splitline[0]].append(lineline)
+
+    # order and output
+    ordered = []
+    chrn = [str(x) for x in range(1, max_chr + 1)]
+    chrn.extend(["X","Y","MT"])
+    chrn.extend([ccc for ccc in chrs.keys() if ccc.startswith("GL")])
+    chrn.extend([ccc for ccc in chrs.keys() if ccc.startswith("KI")])
+    otherchr = [ccc for ccc in chrs.keys() if ccc not in chrn]
+    chrn.extend(otherchr)
+    for chr in chrn:
+        for line in chrs[chr]:
+            ensembl.write(line)
