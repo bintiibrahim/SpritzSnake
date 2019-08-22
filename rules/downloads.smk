@@ -50,14 +50,28 @@ rule reorder_genome_fasta:
     output: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa"
     script: "../scripts/karyotypic_order.py"
 
+rule dict_fa:
+    input: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa"
+    output: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.dict"
+    shell: "gatk CreateSequenceDictionary -R {input} -O {output}"
+
+rule tmpdir:
+    output: temp(directory("tmp"))
+    shell: "mkdir tmp"
+
 rule convert_ucsc2ensembl:
     input:
         "data/ensembl/" + SPECIES + ".vcf",
-        "ChromosomeMappings/" + GENOME_VERSION + "_UCSC2ensembl.txt"
+        "ChromosomeMappings/" + GENOME_VERSION + "_UCSC2ensembl.txt",
+        tmp=directory("tmp"),
+        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        dict="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.dict",
     output:
-        "data/ensembl/" + SPECIES + ".ensembl.vcf",
-    script:
-        "../scripts/convert_ucsc2ensembl.py"
+        ensVcf=temp("data/ensembl/" + SPECIES + ".orig.ensembl.vcf"),
+        dictVcf="data/ensembl/" + SPECIES + ".ensembl.vcf",
+    shell:
+        "python scripts/convert_ucsc2ensembl.py && "
+        "gatk UpdateVCFSequenceDictionary -R {input.fa} --sequence-dictionary {input.dict} -V {output.ensVcf} --output {output.dictVcf} --tmp-dir {input.tmp}"
 
 rule index_ucsc2ensembl:
     input: "data/ensembl/" + SPECIES + ".ensembl.vcf"
