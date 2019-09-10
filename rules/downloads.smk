@@ -1,32 +1,12 @@
-# rule download_ensembl_references:
-#     output:
-#         gfa="data/ensembl/Homo_sapiens.GRCh38.dna.primary_assembly.fa",
-#         gff="data/ensembl/Homo_sapiens.GRCh38.81.gff3",
-#         pfa="data/ensembl/Homo_sapiens.GRCh38.pep.all.fa",
-#         vcf="data/ensembl/" + SPECIES + ".vcf",
-#         vcfidx="data/ensembl/common_all_20170710.vcf.idx"
-#     log: "data/ensembl/downloads.log"
-#     shell:
-#         "(wget -O - ftp://ftp.ensembl.org/pub/release-81//fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz | "
-#         "gunzip -c > {output.gfa} && "
-#         "wget -O - ftp://ftp.ensembl.org/pub/release-81/gff3/homo_sapiens/Homo_sapiens.GRCh38.81.gff3.gz | "
-#         "gunzip -c > {output.gff} && "
-#         "wget -O - ftp://ftp.ensembl.org/pub/release-81//fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz | "
-#         "gunzip -c > {output.pfa} && "
-#         "wget -O - ftp://ftp.ncbi.nih.gov/snp/organisms/human_9606_b150_GRCh38p7/VCF/GATK/common_all_20170710.vcf.gz | "
-#         "gunzip -c > {output.vcf} && "
-#         "gatk IndexFeatureFile -F {output.vcf}) 2> {log}"
-#
-# def check_ensembel_references(wildcards):
-#     # if files exist in folder
+REF=config["species"][0] + "." + config["genome"][0]
 
 rule download_ensembl_references:
     output:
-        gfa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.fa",
-        gff="data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3",
-        pfa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".pep.all.fa",
-        vcf="data/ensembl/" + SPECIES + ".vcf",
-        vcfidx="data/ensembl/" + SPECIES + ".vcf.idx"
+        gfa="data/ensembl/" + REF + ".dna.primary_assembly.fa",
+        gff="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3",
+        pfa="data/ensembl/" + REF + ".pep.all.fa",
+        vcf="data/ensembl/" + config["species"][0] + ".vcf",
+        vcfidx="data/ensembl/" + config["species"][0] + ".vcf.idx"
     log: "data/ensembl/downloads.log"
     shell:
         """
@@ -42,35 +22,35 @@ rule download_ensembl_references:
         """
 
 rule download_chromosome_mappings:
-    output: "ChromosomeMappings/" + GENOME_VERSION + "_UCSC2ensembl.txt"
+    output: "ChromosomeMappings/" + config["genome"][0] + "_UCSC2ensembl.txt"
     shell: "git clone https://github.com/dpryan79/ChromosomeMappings.git"
 
 rule reorder_genome_fasta:
-    input: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.fa"
-    output: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa"
+    input: "data/ensembl/" + REF + ".dna.primary_assembly.fa"
+    output: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa"
     script: "../scripts/karyotypic_order.py"
 
 rule convert_ucsc2ensembl:
     input:
-        "data/ensembl/" + SPECIES + ".vcf",
-        "ChromosomeMappings/" + GENOME_VERSION + "_UCSC2ensembl.txt"
+        "data/ensembl/" + config["species"][0] + ".vcf",
+        "ChromosomeMappings/" + config["genome"][0] + "_UCSC2ensembl.txt"
     output:
-        "data/ensembl/" + SPECIES + ".ensembl.vcf",
+        "data/ensembl/" + config["species"][0] + ".ensembl.vcf",
     script:
         "../scripts/convert_ucsc2ensembl.py"
 
 rule index_ucsc2ensembl:
-    input: "data/ensembl/" + SPECIES + ".ensembl.vcf"
-    output: "data/ensembl/" + SPECIES + ".ensembl.vcf.idx"
+    input: "data/ensembl/" + config["species"][0] + ".ensembl.vcf"
+    output: "data/ensembl/" + config["species"][0] + ".ensembl.vcf.idx"
     shell: "gatk IndexFeatureFile -F {input}"
 
 rule filter_gff3:
-    input: "data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3"
+    input: "data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
     output: "data/ensembl/202122.gff3"
-    shell: "grep \"^#\|20\|^21\|^22\" \"data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3\" > \"data/ensembl/202122.gff3\""
+    shell: "grep \"^#\|20\|^21\|^22\" \"data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3\" > \"data/ensembl/202122.gff3\""
 
 rule filter_fa:
-    input: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.fa"
+    input: "data/ensembl/" + REF + ".dna.primary_assembly.fa"
     output: "data/ensembl/202122.fa"
     script: "../scripts/filter_fasta.py"
 

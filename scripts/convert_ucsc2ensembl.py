@@ -1,12 +1,20 @@
-ucsc=open("data/ensembl/Mus_musculus.vcf")
+import yaml
+
+with open("config.yaml", 'r') as stream:
+   data = yaml.safe_load(stream)
+
+species = data["species"][0]
+version = data["genome"][0]
+
+ucsc=open("data/ensembl/" + species + ".vcf")
 
 ucsc2ensembl={}
-for line in open("ChromosomeMappings/GRCm38_UCSC2ensembl.txt"):
+for line in open("ChromosomeMappings/" + version + "_UCSC2ensembl.txt"):
     linesplit=line.strip().split("\t")
     if len(linesplit) <= 1: continue
     ucsc2ensembl[linesplit[0]] = linesplit[1]
 
-with open("data/ensembl/Mus_musculus.ensembl.vcf","w") as ensembl:
+with open("data/ensembl/" + species + ".ensembl.vcf","w") as ensembl:
     for line in ucsc:
         if line.startswith("#"):
             ensembl.write(line)

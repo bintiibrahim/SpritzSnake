@@ -1,5 +1,6 @@
 GATK_MEM=16000 # MB
 GATK_JAVA=f"--java-options \"-Xmx{GATK_MEM}M -Dsamjdk.compression_level=9\""
+REF=config["species"][0] + "." + config["genome"][0]
 
 rule download_snpeff:
     output: "SnpEff/snpEff.config", "SnpEff/snpEff.jar"
@@ -20,13 +21,13 @@ rule download_snpeff:
         """
 
 rule index_fa:
-    input: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa"
-    output: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa.fai"
-    shell: "samtools faidx data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa"
+    input: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa"
+    output: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa.fai"
+    shell: "samtools faidx data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa"
 
 rule dict_fa:
-    input: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa"
-    output: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.dict"
+    input: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa"
+    output: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.dict"
     shell: "gatk CreateSequenceDictionary -R {input} -O {output}"
 
 rule tmpdir:
@@ -55,9 +56,9 @@ rule hisat2_groupmark_bam:
 rule split_n_cigar_reads:
     input:
         bam="{dir}/combined.sorted.grouped.marked.bam",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
-        fai="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa.fai",
-        fadict="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.dict",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
+        fai="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa.fai",
+        fadict="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.dict",
         tmp=directory("tmp")
     output:
         fixed=temp("{dir}/combined.fixedQuals.bam"),
@@ -73,9 +74,9 @@ rule split_n_cigar_reads:
 
 rule base_recalibration:
     input:
-        knownsites="data/ensembl/" + SPECIES + ".ensembl.vcf",
-        knownsitesidx="data/ensembl/" + SPECIES + ".ensembl.vcf.idx",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        knownsites="data/ensembl/" + config["species"][0] + ".ensembl.vcf",
+        knownsitesidx="data/ensembl/" + config["species"][0] + ".ensembl.vcf.idx",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         bam="{dir}/combined.sorted.grouped.marked.split.bam",
         tmp=directory("tmp")
     output:
@@ -92,9 +93,9 @@ rule base_recalibration:
 
 rule call_gvcf_varaints:
     input:
-        knownsites="data/ensembl/" + SPECIES + ".ensembl.vcf",
-        knownsitesidx="data/ensembl/" + SPECIES + ".ensembl.vcf.idx",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        knownsites="data/ensembl/" + config["species"][0] + ".ensembl.vcf",
+        knownsitesidx="data/ensembl/" + config["species"][0] + ".ensembl.vcf.idx",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         bam="{dir}/combined.sorted.grouped.marked.split.recal.bam",
         tmp=directory("tmp")
     output: temp("{dir}/combined.sorted.grouped.marked.split.recal.g.vcf.gz"),
@@ -116,7 +117,7 @@ rule call_gvcf_varaints:
 
 rule call_vcf_variants:
     input:
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         gvcf="{dir}/combined.sorted.grouped.marked.split.recal.g.vcf.gz",
         tmp=directory("tmp")
     output: "{dir}/combined.sorted.grouped.marked.split.recal.g.gt.vcf" # renamed in next rule
@@ -135,7 +136,7 @@ rule final_vcf_naming:
 
 rule filter_indels:
     input:
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         vcf="{dir}/combined.spritz.vcf"
     output:
         "{dir}/combined.spritz.noindels.vcf"
@@ -170,7 +171,7 @@ rule variant_annotation_ref:
     input:
         "data/SnpEffDatabases.txt",
         snpeff="SnpEff/snpEff.jar",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         vcf="{dir}/combined.spritz.vcf",
     output:
         ann="{dir}/combined.spritz.snpeff.vcf",
@@ -194,7 +195,7 @@ rule variant_annotation_custom:
     input:
         "data/SnpEffDatabases.txt",
         snpeff="SnpEff/snpEff.jar",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         vcf="{dir}/combined.spritz.vcf",
         vcfnoindels="{dir}/combined.spritz.vcf",
         isoform_reconstruction="SnpEff/data/combined.sorted.filtered.withcds.gtf/genes.gtf"
@@ -223,7 +224,7 @@ rule variant_annotation_ref_noindel:
     input:
         "data/SnpEffDatabases.txt",
         snpeff="SnpEff/snpEff.jar",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         vcf="{dir}/combined.spritz.noindels.vcf",
     output:
         ann="{dir}/combined.spritz.noindels.snpeff.vcf",
@@ -248,7 +249,7 @@ rule variant_annotation_custom_noindel:
     input:
         "data/SnpEffDatabases.txt",
         snpeff="SnpEff/snpEff.jar",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         vcf="{dir}/combined.spritz.noindels.vcf",
         isoform_reconstruction="SnpEff/data/combined.sorted.filtered.withcds.gtf/genes.gtf"
     output:

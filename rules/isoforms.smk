@@ -1,7 +1,9 @@
+REF=config["species"][0] + "." + config["genome"][0]
+
 rule assemble_transcripts:
     input:
         bam="{dir}/combined.sorted.bam",
-        gff="data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3"
+        gff="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
     output: "{dir}/combined.sorted.gtf"
     threads: 12
     log: "{dir}/combined.sorted.gtf.log"
@@ -25,8 +27,8 @@ rule filter_transcripts_add_cds:
     input:
         gtfsharp="GtfSharp/GtfSharp/bin/Release/netcoreapp2.1/GtfSharp.dll",
         gtf="{dir}/combined.sorted.gtf",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
-        refg="data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3"
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
+        refg="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
     output:
         temp("{dir}/combined.sorted.filtered.gtf"),
         "{dir}/combined.sorted.filtered.withcds.gtf",
@@ -37,8 +39,8 @@ rule generate_snpeff_database:
     input:
         jar="SnpEff/snpEff.jar",
         gtf=expand("{dir}/combined.sorted.filtered.withcds.gtf", dir=config["analysisDirectory"]),
-        pfa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".pep.all.fa",
-        gfa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa"
+        pfa="data/ensembl/" + REF + ".pep.all.fa",
+        gfa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa"
     output:
         gtf="SnpEff/data/combined.sorted.filtered.withcds.gtf/genes.gtf",
         pfa="SnpEff/data/combined.sorted.filtered.withcds.gtf/protein.fa",

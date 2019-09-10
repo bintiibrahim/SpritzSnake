@@ -1,8 +1,10 @@
 import os
 
+REF=config["species"][0] + "." + config["genome"][0]
+
 rule directories:
-    output: directory("data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic/")
-    shell: "mkdir -p data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic/"
+    output: directory("data/ensembl/" + REF + ".dna.primary_assembly.karyotypic/")
+    shell: "mkdir -p data/ensembl/" + REF + ".dna.primary_assembly.karyotypic/"
 
 rule star_setup:
     output: "STAR-2.6.0c/bin/Linux_x86_64/STAR"
@@ -14,26 +16,26 @@ rule star_setup:
 rule star_genome_generate:
     input:
         star="STAR-2.7.0e/bin/Linux_x86_64/STAR",
-        genomeDir=directory("data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic"),
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
-        gff="data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3"
+        genomeDir=directory("data/ensembl/" + REF + ".dna.primary_assembly.karyotypic"),
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
+        gff="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
     output:
-        "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic/SA"
+        "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic/SA"
     shell:
         "{input.star} --runMode genomeGenerate --runThreadN {threads} --genomeDir {input.genomeDir} "
         "--genomeFastaFiles {input.fa} --sjdbGTFfile {input.gff} --sjdbGTFtagExonParentTranscript Parent --sjdbOverhang 100"
 
 rule hisat_genome:
     input:
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
-        gtf="data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3"
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
+        gtf="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
     threads: 12
-    output: "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.1.ht2"
-    shell: "hisat2-build -p {threads} data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic"
+    output: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.1.ht2"
+    shell: "hisat2-build -p {threads} data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa data/ensembl/" + REF + ".dna.primary_assembly.karyotypic"
 
 rule hisat2_splice_sites:
-    input: "data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".gff3"
-    output: "data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".splicesites.txt"
+    input: "data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
+    output: "data/ensembl/" + REF + "." + config["ensembl"][0] + ".splicesites.txt"
     shell: "hisat2_extract_splice_sites.py {input} > {output}"
 
 def input_fq_args(fastqs):
@@ -43,34 +45,34 @@ def input_fq_args(fastqs):
     else:
         return f"-1 {fqs[0]} -2 {fqs[1]}"
 
-def check_sra():
-    if ('sra' in config and config["sra"] is not None) and len(config["sra"]) > 0:
-        return True
-    return False
+# def check_sra():
+#     if ('sra' in config and config["sra"] is not None) and len(config["sra"]) > 0:
+#         return True
+#     return False
 
 rule hisat2_align_bam:
     input:
-        "data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.1.ht2",
-        "{dir}/trimmed/{sra}.trim_1_fastqc.html" if check_sra() else expand("{{dir}}/trimmed/{fq}.trim_1_fastqc.html", fq=config["fq1"]), # trigger QC analysis after trimming
-        fq1="{dir}/trimmed/{sra}.trim_1.fastq.gz" if check_sra() else expand("{{dir}}/{fq1}_1.fastq.gz", fq1=config["fq1"]),
-        fq2="{dir}/trimmed/{sra}.trim_2.fastq.gz" if check_sra() else expand("{{dir}}/{fq2}_2.fastq.gz", fq2=config["fq2"]),
-        ss="data/ensembl/" + SPECIES + "." + GENEMODEL_VERSION + ".splicesites.txt"
+        "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.1.ht2",
+        "{dir}/trimmed/{sra}.trim_1_fastqc.html",
+        fq1="{dir}/trimmed/{sra}.trim_1.fastq.gz",
+        fq2="{dir}/trimmed/{sra}.trim_2.fastq.gz",
+        ss="data/ensembl/" + REF + "." + config["ensembl"][0] + ".splicesites.txt"
     output:
-        sorted="{dir}/{sra}.sorted.bam" if check_sra() else "{dir}/{fq1,[A-Z0-9]+}.sorted.bam",
+        sorted="{dir}/{sra}.sorted.bam"
     threads: 12
     params:
         compression="9",
-        tempprefix="{dir}/{sra}.sorted" if check_sra() else "{dir}/{fq1}.sorted",
-    log: "{dir}/{sra}.hisat2.log" if check_sra() else "{dir}/{fq1}.hisat2.log"
+        tempprefix="{dir}/{sra}.sorted",
+    log: "{dir}/{sra}.hisat2.log"
     shell:
-        "(hisat2 -p {threads} -x data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic -1 {input.fq1} -2 {input.fq2} --known-splicesite-infile {input.ss} | " # align the suckers
+        "(hisat2 -p {threads} -x data/ensembl/" + REF + ".dna.primary_assembly.karyotypic -1 {input.fq1} -2 {input.fq2} --known-splicesite-infile {input.ss} | " # align the suckers
         "samtools view -h -F4 - | " # get mapped reads only
         "samtools sort -l {params.compression} -T {params.tempprefix} -o {output.sorted} -) 2> {log} && " # sort them
         "samtools index {output}"
 
 rule hisat2_merge_bams:
     input:
-        bams=expand("{{dir}}/{sra}.sorted.bam", sra=config["sra"]) if check_sra() else expand("{{dir}}/{fq1}.sorted.bam", fq1=config["fq1"])
+        bams=expand("{{dir}}/{sra}.sorted.bam", sra=config["sra"])
     output:
         sorted="{dir}/combined.sorted.bam"
     params:
