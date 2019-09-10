@@ -1,13 +1,3 @@
-GENOME_VERSION = "GRCm38"
-ENSEMBL_VERSION = "97"
-GENEMODEL_VERSION = GENOME_VERSION + "." + ENSEMBL_VERSION
-SPECIES = "Mus_musculus"
-ORGANISM = "mouse"
-# TEST_GENOME_FA = f"ensembl/202122.fa"
-# TEST_ENSEMBL_GFF = f"ensembl/202122.gff3"
-# FA=GENOME_FA # for analysis; can also be TEST_GENOME_FA
-# GFF3=ENSEMBL_GFF # for analysis; can also be TEST_ENSEMBL_GFF
-
 configfile: "config.yaml"
 
 def check_dir():

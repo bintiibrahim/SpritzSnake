@@ -1,9 +1,10 @@
-UNIPROTXML="data/uniprot/" + ORGANISM + ".protein.xml.gz" #"data/Homo_sapiens_202022.xml.gz"
+UNIPROTXML="data/uniprot/" + config["organism"][0] + ".protein.xml.gz" #"data/Homo_sapiens_202022.xml.gz"
 TRANSFER_MOD_DLL="TransferUniProtModifications/TransferUniProtModifications/bin/Release/netcoreapp2.1/TransferUniProtModifications.dll"
+REF=config["species"][0] + "." + config["genome"][0]
 
 rule download_protein_xml:
     output: UNIPROTXML
-    shell: "python scripts/download_protein_xml.py | gzip -c > {output}"
+    shell: "python scripts/get_proteome.py && python scripts/download_xml.py | gzip -c > {output}" #fixme
 
 rule build_transfer_mods:
     output: TRANSFER_MOD_DLL
@@ -40,9 +41,9 @@ rule reference_protein_xml:
     Create protein XML with sequences from the reference gene model.
     """
     input:
-        "data/SnpEffDatabases.txt",
+        #"data/SnpEffDatabases.txt",
         snpeff="SnpEff/snpEff.jar",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        #fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         transfermods=TRANSFER_MOD_DLL,
         unixml=UNIPROTXML,
     output:
@@ -59,8 +60,10 @@ rule reference_protein_xml:
     shell:
         "(java -Xmx{resources.mem_mb}M -jar {input.snpeff} -v -nostats"
         " -xmlProt {output.protxml} {params.ref}) 2> {log} && " # no isoforms, no variants
-        "dotnet {input.transfermods} -x {input.unixml} -y {output.protxml} && "
-        "gzip -k {output.protxmlwithmods} {output.protxml}"
+        "mv {output.protxml} AnalysisFolder/GRCm38.86.protein.xml && "
+        "dotnet {input.transfermods} -x {input.unixml} -y AnalysisFolder/GRCm38.86.protein.xml && "
+        "mv AnalysisFolder/* {wildcards.dir} &&"
+        "gzip -k {output.protxmlwithmods} {output.protxml} "
 
 rule custom_protein_xml:
     """
@@ -69,7 +72,7 @@ rule custom_protein_xml:
     input:
         "data/SnpEffDatabases.txt",
         snpeff="SnpEff/snpEff.jar",
-        fa="data/ensembl/" + SPECIES + "." + GENOME_VERSION + ".dna.primary_assembly.karyotypic.fa",
+        fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         isoform_reconstruction="SnpEff/data/combined.sorted.filtered.withcds.gtf/genes.gtf",
         transfermods=TRANSFER_MOD_DLL,
         unixml=UNIPROTXML,
