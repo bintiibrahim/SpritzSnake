@@ -25,15 +25,6 @@ rule index_fa:
     output: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa.fai"
     shell: "samtools faidx data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa"
 
-rule dict_fa:
-    input: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa"
-    output: "data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.dict"
-    shell: "gatk CreateSequenceDictionary -R {input} -O {output}"
-
-rule tmpdir:
-    output: temp(directory("tmp"))
-    shell: "mkdir tmp"
-
 rule hisat2_groupmark_bam:
     input:
         sorted="{dir}/combined.sorted.bam",
