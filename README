@@ -1,0 +1,6 @@
+Branches of spritzsnake:
+
+[master] old code, irrelevant. needs update
+[human] contains latest version, but hard coded human references
+[NOD_mouse] working version specific for NOD genome data, skips trimming
+[working] working version, not to be used for runs
