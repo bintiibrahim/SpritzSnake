@@ -1,7 +1,12 @@
 REF=config["species"][0] + "." + config["genome"][0]
 
 rule download_ensembl_references:
+    input: REF
     output:
+        gfagz=temp("data/ensembl/" + REF + ".dna.primary_assembly.fa.gz"),
+        gffgz=temp("data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3.gz"),
+        pfagz=temp("data/ensembl/" + REF + ".pep.all.fa.gz"),
+        vcfgz=temp("data/ensembl/" + config["species"][0] + ".vcf.gz"),
         gfa="data/ensembl/" + REF + ".dna.primary_assembly.fa",
         gff="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3",
         pfa="data/ensembl/" + REF + ".pep.all.fa",
@@ -10,14 +15,11 @@ rule download_ensembl_references:
     log: "data/ensembl/downloads.log"
     shell:
         """
-            (wget -O - ftp://ftp.ensembl.org/pub/release-97//fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.primary_assembly.fa.gz |
-            gunzip -c > {output.gfa} &&
-            wget -O - ftp://ftp.ensembl.org/pub/release-97/gff3/mus_musculus/Mus_musculus.GRCm38.97.gff3.gz |
-            gunzip -c > {output.gff} &&
-            wget -O - ftp://ftp.ensembl.org/pub/release-97//fasta/mus_musculus/pep/Mus_musculus.GRCm38.pep.all.fa.gz |
-            gunzip -c > {output.pfa} &&
-            wget -O - ftp://ftp.ensembl.org/pub/release-97/variation/vcf/mus_musculus/mus_musculus.vcf.gz |
-            gunzip -c > {output.vcf} &&
+            python scripts/download_ensembl.py {input} &&
+            gunzip {output.gfagz} > {output.gfa} &&
+            gunzip {output.gffgz} > {output.gff} &&
+            gunzip {output.pfagz} > {output.pfa} &&
+            gunzip {output.vcfgz} > {output.vcf} &&
             gatk IndexFeatureFile -F {output.vcf}) 2> {log}
         """
 

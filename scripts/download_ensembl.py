@@ -8,23 +8,28 @@ import sys
 with open("config.yaml", 'r') as stream:
     data = yaml.safe_load(stream)
 
-species = data["species"][0]
+species = data["species"][0].lower()
 release = data["release"][0]
-path = sys.argv[0] # Mus_musculus.GRCm38
 
-gfa1 = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species + "/dna/" + path + ".dna.primary_assembly.fa.gz"
-gfa2 = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species + "/dna/" + path + ".dna.toplevel.fa.gz"
+path = sys.argv[1] # Mus_musculus.GRCm38
 
-# if gfa1 path exists, download
-# else gfa2
+primary = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species + "/dna/" + path + ".dna.primary_assembly.fa.gz"
+toplevel = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species + "/dna/" + path + ".dna.toplevel.fa.gz"
 
-gff = "ftp://ftp.ensembl.org/pub/release-" + release + "/gff3/" + species + "/" + path + "." + release + ".gff3.gz"
+# download gfa
+if subprocess.check_output(['./validate.sh', primary]) == b'true\n':
+    subprocess.check_call(["wget", "-P", "data/ensembl/", "-P", "data/ensembl/", primary])
+else:
+    subprocess.check_call(["wget", "-P", "data/ensembl/", toplevel])
+
 # download gff
+gff = "ftp://ftp.ensembl.org/pub/release-" + release + "/gff3/" + species + "/" + path + "." + release + ".gff3.gz"
+subprocess.check_call(["wget", "-P", "data/ensembl/", gff])
 
-pep = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species + "/pep/" + path + ".pep.all.fa.gz"
 # download pep
+pep = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species + "/pep/" + path + ".pep.all.fa.gz"
+subprocess.check_call(["wget", "-P", "data/ensembl/", pep])
 
-vcf = "ftp://ftp.ensembl.org/pub/release-" + release + "/variation/vcf/" + species + "/" + species + ".vcf.gz"
 # download vcf
-
-# gunzip
+vcf = "ftp://ftp.ensembl.org/pub/release-" + release + "/variation/vcf/" + species + "/" + species + ".vcf.gz" # edit, incosistent naming convention /vcf/Mus_musculus.vcf.gz or /vcf/mus_musculus.vcf.gz
+subprocess.check_call(["wget", "-P", "data/ensembl/", vcf])
