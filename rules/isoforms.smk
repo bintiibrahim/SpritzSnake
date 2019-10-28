@@ -1,9 +1,9 @@
-REF=config["species"][0] + "." + config["genome"][0]
+REF=config["species"] + "." + config["genome"]
 
 rule assemble_transcripts:
     input:
         bam="{dir}/combined.sorted.bam",
-        gff="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
+        gff="data/ensembl/" + REF + "." + config["release"] + ".gff3"
     output: "{dir}/combined.sorted.gtf"
     threads: 12
     log: "{dir}/combined.sorted.gtf.log"
@@ -28,7 +28,7 @@ rule filter_transcripts_add_cds:
         gtfsharp="GtfSharp/GtfSharp/bin/Release/netcoreapp2.1/GtfSharp.dll",
         gtf="{dir}/combined.sorted.gtf",
         fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
-        refg="data/ensembl/" + REF + "." + config["ensembl"][0] + ".gff3"
+        refg="data/ensembl/" + REF + "." + config["release"] + ".gff3"
     output:
         temp("{dir}/combined.sorted.filtered.gtf"),
         "{dir}/combined.sorted.filtered.withcds.gtf",
@@ -52,14 +52,20 @@ rule generate_snpeff_database:
     log:
         "data/combined.sorted.filtered.withcds.snpeffdatabase.log"
     shell:
-        """
-        cp {input.gtf} {output.gtf}
-        cp {input.pfa} {output.pfa}
-        cp {input.gfa} {output.gfa}
-        echo \"\n# {params.ref}\" >> SnpEff/snpEff.config
-        echo \"{params.ref}.genome : Mouse genome GRCm38 using RefSeq transcripts\" >> SnpEff/snpEff.config
-        echo \"{params.ref}.reference : ftp://ftp.ncbi.nlm.nih.gov/refseq/M_musculus/\" >> SnpEff/snpEff.config
-        echo \"\t{params.ref}.M.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config
-        echo \"\t{params.ref}.MT.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config
-        (java -Xmx{resources.mem_mb}M -jar {input.jar} build -gtf22 -v {params.ref}) 2> {log}
-        """
+        # "cp {input.gtf} {output.gtf} && "
+        # "cp {input.pfa} {output.pfa} && "
+        # "cp {input.gfa} {output.gfa} && "
+        # "echo \"\n# {params.ref}\" >> SnpEff/snpEff.config && "
+        # "echo \"{params.ref}.genome : Human genome " + config["genome"] + " using RefSeq transcripts\" >> SnpEff/snpEff.config && "
+        # "echo \"{params.ref}.reference : ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/\" >> SnpEff/snpEff.config && "
+        # "echo \"\t{params.ref}.M.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config && "
+        # "echo \"\t{params.ref}.MT.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config && "
+        # "(java -Xmx{resources.mem_mb}M -jar {input.jar} build -gtf22 -v {params.ref}) 2> {log}"
+
+        "cp {input.gtf} {output.gtf} && "
+        "cp {input.pfa} {output.pfa} && "
+        "cp {input.gfa} {output.gfa} && "
+        "echo \"\n# {params.ref}\" >> SnpEff/snpEff.config && "
+        "echo \"\t{params.ref}.M.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config && "
+        "echo \"\t{params.ref}.MT.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config && "
+        "(java -Xmx{resources.mem_mb}M -jar {input.jar} build -gtf22 -v {params.ref}) 2> {log}"

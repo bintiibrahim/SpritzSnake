@@ -8,8 +8,8 @@ import sys
 with open("config.yaml", 'r') as stream:
     data = yaml.safe_load(stream)
 
-species = data["species"][0].lower()
-release = data["release"][0]
+species = data["species"].lower()
+release = data["release"]
 
 path = sys.argv[1] # Mus_musculus.GRCm38
 
@@ -18,7 +18,7 @@ toplevel = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species
 
 # download gfa
 if subprocess.check_output(['./validate.sh', primary]) == b'true\n':
-    subprocess.check_call(["wget", "-P", "data/ensembl/", "-P", "data/ensembl/", primary])
+    subprocess.check_call(["wget", "-P", "data/ensembl/", primary])
 else:
     subprocess.check_call(["wget", "-P", "data/ensembl/", toplevel])
 
@@ -31,5 +31,9 @@ pep = "ftp://ftp.ensembl.org/pub/release-" + release + "//fasta/" + species + "/
 subprocess.check_call(["wget", "-P", "data/ensembl/", pep])
 
 # download vcf
-vcf = "ftp://ftp.ensembl.org/pub/release-" + release + "/variation/vcf/" + species + "/" + species + ".vcf.gz" # edit, incosistent naming convention /vcf/Mus_musculus.vcf.gz or /vcf/mus_musculus.vcf.gz
-subprocess.check_call(["wget", "-P", "data/ensembl/", vcf])
+vcf1 = "ftp://ftp.ensembl.org/pub/release-" + release + "/variation/vcf/" + species + "/" + data["species"] + ".vcf.gz"
+vcf2 = "ftp://ftp.ensembl.org/pub/release-" + release + "/variation/vcf/" + species + "/" + species + ".vcf.gz" # edit, incosistent naming convention /vcf/Mus_musculus.vcf.gz or /vcf/mus_musculus.vcf.gz
+if subprocess.check_output(['./validate.sh', vcf1]) == b'true\n':
+    subprocess.check_call(["wget", "-P", "data/ensembl/", vcf1])
+else:
+    subprocess.check_call(["wget", "-P", "data/ensembl/", vcf2])

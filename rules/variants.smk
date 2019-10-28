@@ -1,6 +1,6 @@
 GATK_MEM=16000 # MB
 GATK_JAVA=f"--java-options \"-Xmx{GATK_MEM}M -Dsamjdk.compression_level=9\""
-REF=config["species"][0] + "." + config["genome"][0]
+REF=config["species"] + "." + config["genome"]
 
 rule download_snpeff:
     output: "SnpEff/snpEff.config", "SnpEff/snpEff.jar"
@@ -35,13 +35,13 @@ rule hisat2_groupmark_bam:
         marked="{dir}/combined.sorted.grouped.marked.bam",
         markedidx="{dir}/combined.sorted.grouped.marked.bam.bai",
         metrics="{dir}/combined.sorted.grouped.marked.metrics"
-    resources:
-        mem_mb=GATK_MEM
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.sorted.grouped.marked.log"
     shell:
-        "gatk {GATK_JAVA} AddOrReplaceReadGroups -PU platform  -PL illumina -SM sample -LB library -I {input.sorted} -O {output.grouped} -SO coordinate --TMP_DIR {input.tmp} && "
+        "(gatk {GATK_JAVA} AddOrReplaceReadGroups -PU platform  -PL illumina -SM sample -LB library -I {input.sorted} -O {output.grouped} -SO coordinate --TMP_DIR {input.tmp} && "
         "samtools index {output.grouped} && "
         "gatk {GATK_JAVA} MarkDuplicates -I {output.grouped} -O {output.marked} -M {output.metrics} --TMP_DIR {input.tmp} -AS true &&"
-        "samtools index {output.marked}"
+        "samtools index {output.marked}) &> {log}"
 
 # Checks if quality encoding is correct, and then splits n cigar reads
 rule split_n_cigar_reads:
@@ -55,37 +55,35 @@ rule split_n_cigar_reads:
         fixed=temp("{dir}/combined.fixedQuals.bam"),
         split=temp("{dir}/combined.sorted.grouped.marked.split.bam"),
         splitidx=temp("{dir}/combined.sorted.grouped.marked.split.bam.bai")
-    resources:
-        mem_mb=GATK_MEM
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.sorted.grouped.marked.split.log"
     shell:
-        "gatk {GATK_JAVA} FixMisencodedBaseQualityReads -I {input.bam} -O {output.fixed} && "
+        "(gatk {GATK_JAVA} FixMisencodedBaseQualityReads -I {input.bam} -O {output.fixed} && "
         "gatk {GATK_JAVA} SplitNCigarReads -R {input.fa} -I {output.fixed} -O {output.split} --tmp-dir {input.tmp} || " # fix and split
         "gatk {GATK_JAVA} SplitNCigarReads -R {input.fa} -I {input.bam} -O {output.split} --tmp-dir {input.tmp}; " # or just split
-        "samtools index {output.split}" # always index
+        "samtools index {output.split}) &> {log}" # always index
 
 rule base_recalibration:
     input:
-        knownsites="data/ensembl/" + config["species"][0] + ".ensembl.vcf",
-        knownsitesidx="data/ensembl/" + config["species"][0] + ".ensembl.vcf.idx",
+        knownsites="data/ensembl/" + config["species"] + ".ensembl.vcf",
+        knownsitesidx="data/ensembl/" + config["species"] + ".ensembl.vcf.idx",
         fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         bam="{dir}/combined.sorted.grouped.marked.split.bam",
         tmp=directory("tmp")
     output:
         recaltable=temp("{dir}/combined.sorted.grouped.marked.split.recaltable"),
         recalbam=temp("{dir}/combined.sorted.grouped.marked.split.recal.bam")
-    resources:
-        mem_mb=GATK_MEM
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.sorted.grouped.marked.split.recal.log"
     shell:
-        """
-        gatk {GATK_JAVA} BaseRecalibrator -R {input.fa} -I {input.bam} --known-sites {input.knownsites} -O {output.recaltable} --tmp-dir {input.tmp}
-        gatk {GATK_JAVA} ApplyBQSR -R {input.fa} -I {input.bam} --bqsr-recal-file {output.recaltable} -O {output.recalbam} --tmp-dir {input.tmp}
-        samtools index {output.recalbam}
-        """
+        "(gatk {GATK_JAVA} BaseRecalibrator -R {input.fa} -I {input.bam} --known-sites {input.knownsites} -O {output.recaltable} --tmp-dir {input.tmp} && "
+        "gatk {GATK_JAVA} ApplyBQSR -R {input.fa} -I {input.bam} --bqsr-recal-file {output.recaltable} -O {output.recalbam} --tmp-dir {input.tmp} && "
+        "samtools index {output.recalbam}) &> {log}"
 
 rule call_gvcf_varaints:
     input:
-        knownsites="data/ensembl/" + config["species"][0] + ".ensembl.vcf",
-        knownsitesidx="data/ensembl/" + config["species"][0] + ".ensembl.vcf.idx",
+        knownsites="data/ensembl/" + config["species"] + ".ensembl.vcf",
+        knownsitesidx="data/ensembl/" + config["species"] + ".ensembl.vcf.idx",
         fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         bam="{dir}/combined.sorted.grouped.marked.split.recal.bam",
         tmp=directory("tmp")
@@ -95,16 +93,16 @@ rule call_gvcf_varaints:
         # ~14000 regions/min with 24 threads,
         # and ~13000 regions/min with 8 threads,
         # so going with 8 threads max here
-    resources:
-        mem_mb=GATK_MEM
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.sorted.grouped.marked.split.recal.g.log"
     shell:
-        "gatk {GATK_JAVA} HaplotypeCaller"
+        "(gatk {GATK_JAVA} HaplotypeCaller"
         " --native-pair-hmm-threads {threads}"
         " -R {input.fa} -I {input.bam}"
         " --min-base-quality-score 20 --dont-use-soft-clipped-bases true"
         " --dbsnp {input.knownsites} -O {output} --tmp-dir {input.tmp}"
         " -ERC GVCF --max-mnp-distance 3 &&"
-        "gatk IndexFeatureFile -F {output}"
+        "gatk IndexFeatureFile -F {output}) &> {log}"
 
 rule call_vcf_variants:
     input:
@@ -112,13 +110,11 @@ rule call_vcf_variants:
         gvcf="{dir}/combined.sorted.grouped.marked.split.recal.g.vcf.gz",
         tmp=directory("tmp")
     output: "{dir}/combined.sorted.grouped.marked.split.recal.g.gt.vcf" # renamed in next rule
-    resources:
-        mem_mb=GATK_MEM
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.sorted.grouped.marked.split.recal.g.gt.log"
     shell:
-        """
-        gatk {GATK_JAVA} GenotypeGVCFs -R {input.fa} -V {input.gvcf} -O {output} --tmp-dir {input.tmp}
-        gatk IndexFeatureFile -F {output}
-        """
+        "(gatk {GATK_JAVA} GenotypeGVCFs -R {input.fa} -V {input.gvcf} -O {output} --tmp-dir {input.tmp} && "
+        "gatk IndexFeatureFile -F {output}) &> {log}"
 
 rule final_vcf_naming:
     input: "{dir}/combined.sorted.grouped.marked.split.recal.g.gt.vcf"
@@ -129,11 +125,11 @@ rule filter_indels:
     input:
         fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         vcf="{dir}/combined.spritz.vcf"
-    output:
-        "{dir}/combined.spritz.noindels.vcf"
+    output: "{dir}/combined.spritz.noindels.vcf"
+    log: "data/combined.spritz.noindels.log"
     shell:
-        "gatk SelectVariants --select-type-to-exclude INDEL -R {input.fa} -V {input.vcf} -O {output} && "
-        "gatk IndexFeatureFile -F {output}"
+        "(gatk SelectVariants --select-type-to-exclude INDEL -R {input.fa} -V {input.vcf} -O {output} && "
+        "gatk IndexFeatureFile -F {output}) &> {log}"
 
 # rule snpeff_data_folder:
 #     output: directory("SnpEff/data")
@@ -144,17 +140,14 @@ rule snpeff_database_setup:
         # dir="SnpEff/data",
         jar="SnpEff/snpEff.jar",
         config="SnpEff/snpEff.config"
-    output:
-        "data/SnpEffDatabases.txt"
-    params:
-        ref="GRCm38.86"
-    resources:
-        mem_mb=16000
+    output: "data/SnpEffDatabases.txt"
+    params: ref=config["genome"] + "." + config["snpeff"]
+    resources: mem_mb=16000
     shell:
         "java -Xmx{resources.mem_mb}M -jar {input.jar} databases > {output} && "
         "echo \"\n# {params.ref}\" >> SnpEff/snpEff.config && "
-        "echo \"{params.ref}.genome : Mouse genome GRCm38 using RefSeq transcripts\" >> SnpEff/snpEff.config && "
-        "echo \"{params.ref}.reference : ftp://ftp.ncbi.nlm.nih.gov/refseq/M_musculus/\" >> SnpEff/snpEff.config && "
+#        "echo \"{params.ref}.genome : Mouse genome GRCm38 using RefSeq transcripts\" >> SnpEff/snpEff.config && "
+#        "echo \"{params.ref}.reference : ftp://ftp.ncbi.nlm.nih.gov/refseq/M_musculus/\" >> SnpEff/snpEff.config && "
         "echo \"\t{params.ref}.M.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config && "
         "echo \"\t{params.ref}.MT.codonTable : Vertebrate_Mitochondrial\" >> SnpEff/snpEff.config"
 
@@ -170,12 +163,9 @@ rule variant_annotation_ref:
         genesummary="{dir}/combined.spritz.snpeff.genes.txt",
         protfa="{dir}/combined.spritz.snpeff.protein.fasta",
         protxml="{dir}/combined.spritz.snpeff.protein.xml"
-    params:
-        ref="GRCm38.86", # no isoform reconstruction
-    resources:
-        mem_mb=16000
-    log:
-        "{dir}/combined.spritz.snpeff.log"
+    params: ref=config["genome"] + "." + config["snpeff"], # no isoform reconstruction
+    resources: mem_mb=16000
+    log: "{dir}/combined.spritz.snpeff.log"
     shell:
         "(java -Xmx{resources.mem_mb}M -jar {input.snpeff} -v -stats {output.html}"
         " -fastaProt {output.protfa} -xmlProt {output.protxml} "
@@ -199,12 +189,9 @@ rule variant_annotation_custom:
         protxmlgz="{dir}/combined.spritz.isoformvariants.protein.xml.gz",
         # protnoindelxml=temp("{dir}/combined.spritz.noindels.isoformvariants.protein.xml"),
         # protnoindelxmlgz="{dir}/combined.spritz.noindels.isoformvariants.protein.xml.gz"
-    params:
-        ref="combined.sorted.filtered.withcds.gtf" # with isoforms
-    resources:
-        mem_mb=16000
-    log:
-        "{dir}/combined.spritz.isoformvariants.log"
+    params: ref="combined.sorted.filtered.withcds.gtf" # with isoforms
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.spritz.isoformvariants.log"
     shell:
         "(java -Xmx{resources.mem_mb}M -jar {input.snpeff} -v -stats {output.html}"
         " -fastaProt {output.protfa} -xmlProt {output.protxml}"
@@ -224,12 +211,9 @@ rule variant_annotation_ref_noindel:
         protfa="{dir}/combined.spritz.snpeff.noindels.protein.fasta",
         protxml=temp("{dir}/combined.spritz.snpeff.noindels.protein.xml"),
         protxmlgz="{dir}/combined.spritz.snpeff.noindels.protein.xml.gz"
-    params:
-        ref="GRCm38.86", # no isoform reconstruction
-    resources:
-        mem_mb=16000
-    log:
-        "{dir}/combined.spritz.snpeff.log"
+    params: ref=config["genome"] + "." + config["snpeff"], # no isoform reconstruction
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.spritz.snpeff.log"
     shell:
         "(java -Xmx{resources.mem_mb}M -jar {input.snpeff} -v -stats {output.html}"
         " -fastaProt {output.protfa} -xmlProt {output.protxml} "
@@ -250,12 +234,9 @@ rule variant_annotation_custom_noindel:
         protfa="{dir}/combined.spritz.noindels.isoformvariants.protein.fasta",
         protxml=temp("{dir}/combined.spritz.noindels.isoformvariants.protein.xml"),
         protxmlgz="{dir}/combined.spritz.noindels.isoformvariants.protein.xml.gz",
-    params:
-        ref="combined.sorted.filtered.withcds.gtf" # with isoforms
-    resources:
-        mem_mb=16000
-    log:
-        "{dir}/combined.spritz.isoformvariants.log"
+    params: ref="combined.sorted.filtered.withcds.gtf" # with isoforms
+    resources: mem_mb=GATK_MEM
+    log: "{dir}/combined.spritz.isoformvariants.log"
     shell:
         "(java -Xmx{resources.mem_mb}M -jar {input.snpeff} -v -stats {output.html}"
         " -fastaProt {output.protfa} -xmlProt {output.protxml}"

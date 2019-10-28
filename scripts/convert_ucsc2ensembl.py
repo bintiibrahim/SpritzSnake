@@ -3,10 +3,10 @@ import yaml
 with open("config.yaml", 'r') as stream:
    data = yaml.safe_load(stream)
 
-species = data["species"][0]
-version = data["genome"][0]
+species = data["species"]
+version = data["genome"]
 
-ucsc=open("data/ensembl/" + species + ".vcf")
+ucsc=open("./data/ensembl/" + species + ".vcf")
 
 ucsc2ensembl={}
 for line in open("ChromosomeMappings/" + version + "_UCSC2ensembl.txt"):
@@ -14,7 +14,7 @@ for line in open("ChromosomeMappings/" + version + "_UCSC2ensembl.txt"):
     if len(linesplit) <= 1: continue
     ucsc2ensembl[linesplit[0]] = linesplit[1]
 
-with open("data/ensembl/Mus_musculus.orig.ensembl.vcf","w") as ensembl:
+with open("./data/ensembl/" + species + ".orig.ensembl.vcf","w") as ensembl:
     chrs={}
     max_chr=0
     for line in ucsc:

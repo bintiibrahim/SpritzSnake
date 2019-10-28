@@ -2,13 +2,17 @@
 
 import requests
 import sys
+import yaml
 
 # find proteome
 BASE = 'http://www.uniprot.org'
 KB_ENDPOINT = '/proteomes/'
 TOOL_ENDPOINT = '/uploadlists/'
 
-query = 'Mus_musculus' # read config
+with open("config.yaml", 'r') as stream:
+   data = yaml.safe_load(stream)
+
+query = data["species"] # read config
 
 payload = {
     'query': query,

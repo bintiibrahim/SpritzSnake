@@ -1,6 +1,7 @@
-sra: [SRX6592007]
-analysisDirectory: [f]
-species: ["Mus_musculus"]
-genome: ["GRCm38"]
-release: ["97"]
-organism: ["mouse"]
+sra: ["SRX159823"]
+analysisDirectory: [AnalysisFolder]
+species: "Homo_sapiens"
+genome: "GRCh38"
+release: "81"
+snpeff: "86" # hard coded for now
+fq: []
