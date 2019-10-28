@@ -1,1 +1,34 @@
-This branch is derived from mouse and contains latest code for downloading ensembl references (see download_ensembl.py)
+Latest working version of SpritzSnake.
+
+To run workflow in terminal:
+
+## Define config file ##
+
+# can define multiple sras, separate using comma 
+sra: ["SRX159823"]
+
+# use /mnt/{drive}/{folder} for path to drives e.g. [/mnt/f/analysis]
+# else run in root e.g. [analysis]
+# do not use [AnalysisFolder]
+analysisDirectory: [/mnt/f/analysis] 
+
+# species
+species: "Homo_sapiens"
+
+# genome version
+genome: "GRCh38"
+
+# ensembl release
+release: "81"
+
+# snpeff version, do not change
+snpeff: "86"
+
+# if using input fastq files, leave sra: [] 
+# paired fastq files should have *_1.fastq & *_2.fastq extensions
+# e.g. {NAME}_1.fastq and {NAME}_2.fastq 
+# fq: ["NAME"]
+fq: []
+
+## Run snakemake ##
+snakemake -j 24

@@ -126,7 +126,7 @@ rule filter_indels:
         fa="data/ensembl/" + REF + ".dna.primary_assembly.karyotypic.fa",
         vcf="{dir}/combined.spritz.vcf"
     output: "{dir}/combined.spritz.noindels.vcf"
-    log: "data/combined.spritz.noindels.log"
+    log: "{dir}/combined.spritz.noindels.log"
     shell:
         "(gatk SelectVariants --select-type-to-exclude INDEL -R {input.fa} -V {input.vcf} -O {output} && "
         "gatk IndexFeatureFile -F {output}) &> {log}"

@@ -22,9 +22,12 @@ rule transfer_modifications_variant:
     output:
         protxml=temp("{dir}/combined.spritz.snpeff.protein.withmods.xml"),
         protxmlgz="{dir}/combined.spritz.snpeff.protein.withmods.xml.gz"
-    log: "data/combined.spritz.snpeff.protein.withmods.log"
+    log: "{dir}/combined.spritz.snpeff.protein.withmods.log"
     shell:
-        "(dotnet {input.transfermods} -x {input.unixml} -y {input.protxml} && gzip -k {output.protxml}) &> {log}"
+        "(mv {input.protxml} AnalysisFolder/combined.spritz.snpeff.protein.xml &&"
+        "dotnet {input.transfermods} -x {input.unixml} -y AnalysisFolder/combined.spritz.snpeff.protein.xml && "
+        "mv AnalysisFolder/* {wildcards.dir} &&"
+        "gzip -k {output.protxml}) &> {log}"
 
 rule transfer_modifications_isoformvariant:
     input:
@@ -34,9 +37,12 @@ rule transfer_modifications_isoformvariant:
     output:
         protxml=temp("{dir}/combined.spritz.isoformvariants.protein.withmods.xml"),
         protxmlgz="{dir}/combined.spritz.isoformvariants.protein.withmods.xml.gz"
-    log: "data/combined.spritz.isoformvariants.protein.withmods.log"
+    log: "{dir}/combined.spritz.isoformvariants.protein.withmods.log"
     shell:
-        "(dotnet {input.transfermods} -x {input.unixml} -y {input.protxml} && gzip -k {output.protxml}) &> {log}"
+        "(mv {input.protxml} AnalysisFolder/combined.spritz.isoformvariants.protein.xml &&"
+        "dotnet {input.transfermods} -x {input.unixml} -y AnalysisFolder/combined.spritz.isoformvariants.protein.xml && "
+        "mv AnalysisFolder/* {wildcards.dir} &&"
+        "gzip -k {output.protxml}) &> {log}"
 
 rule reference_protein_xml:
     """
@@ -63,7 +69,9 @@ rule reference_protein_xml:
     shell:
         "(java -Xmx{resources.mem_mb}M -jar {input.snpeff} -v -nostats"
         " -xmlProt {output.protxml} {params.ref} && " # no isoforms, no variants
-        "dotnet {input.transfermods} -x {input.unixml} -y {output.protxml} && "
+        "mv {output.protxml} AnalysisFolder/GRCm38.86.protein.xml && "
+        "dotnet {input.transfermods} -x {input.unixml} -y AnalysisFolder/GRCm38.86.protein.xml && "
+        "mv AnalysisFolder/* {wildcards.dir} && "
         "gzip -k {output.protxmlwithmods} {output.protxml}) &> {log} && touch {output.dummy}"
 
 rule custom_protein_xml:
@@ -91,5 +99,7 @@ rule custom_protein_xml:
     shell:
         "(java -Xmx{resources.mem_mb}M -jar {input.snpeff} -v -nostats"
         " -xmlProt {output.protxml} {params.ref} && " # isoforms, no variants
-        "dotnet {input.transfermods} -x {input.unixml} -y {output.protxml} &&"
+        "mv {output.protxml} AnalysisFolder/combined.spritz.isoform.protein.xml &&"
+        "dotnet {input.transfermods} -x {input.unixml} -y AnalysisFolder/combined.spritz.isoform.protein.xml &&"
+        "mv AnalysisFolder/* {wildcards.dir} &&"
         "gzip -k {output.protxmlwithmods} {output.protxml}) &> {log}"

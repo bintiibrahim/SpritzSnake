@@ -1,5 +1,5 @@
 sra: ["SRX159823"]
-analysisDirectory: [AnalysisFolder]
+analysisDirectory: [AnalysisDirectory] # do not use AnalysisFolder
 species: "Homo_sapiens"
 genome: "GRCh38"
 release: "81"
